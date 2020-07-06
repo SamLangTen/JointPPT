@@ -15,23 +15,17 @@ namespace JointPPT
     public partial class MainWindow : Window
     {
 
+        public MainWindowViewModel ViewModel { get; set; }
 
-        public class ErrorInfo
-        {
-            public ErrorInfo(string name, string message)
-            {
-                Name = name;
-                Message = message;
-            }
-            public string Name = "";
-            public string Message = "";
-        }
 
 
 
         public MainWindow()
         {
+            ViewModel = new MainWindowViewModel();
+            DataContext = ViewModel;
             InitializeComponent();
+     
         }
 
         private void FileListBox_DragEnter(object sender, DragEventArgs e)
@@ -110,49 +104,24 @@ namespace JointPPT
                                 , MessageBoxButton.OKCancel) == MessageBoxResult.OK)
             {
                 List<string> files = new List<string>();
-                foreach (var item in FileListBox.Items)
+                //Test if file is occupied
+                var occupiedFilename = ViewModel.AddedFilenames.FirstOrDefault(f => !TestFileOccupation(f));
+                if (occupiedFilename != null)
                 {
-                    files.Add(item.ToString());
-                    //Check if file is occupied
-                    IntPtr vHandle = Lopen(item.ToString(), OF_READWRITE | OF_SHARE_DENY_NONE);
-                    if (vHandle == HFILE_ERROR)
-                    {
-                        MessageBox.Show("The file is occupied or unavailable:" + item.ToString());
-                        CloseHandle(vHandle);
-                        return;
-                    }
-                    CloseHandle(vHandle);
+                    MessageBox.Show($"The file is occupied or unavailable:{occupiedFilename}");
+                    return;
                 }
 
                 //Multithread
-                bool isWideScreenChecked = (bool)IsWideScreen.IsChecked;
                 MainUI.IsEnabled = false;
-                string log = "";
-                await Task.Run(() =>
-                {
-                    var result = Join(files, isWideScreenChecked);
-                    log = CallBack(result);
-                });
-
+                await Task.Run(() => ViewModel.Logs = Join(files, ViewModel.UsedWideScreen));
                 MainUI.IsEnabled = true;
                 Activate();
-                StatusLabel.Content = log;
             }
         }
 
         public delegate void UIEventHandler();
 
-        private string CallBack(List<ErrorInfo> errorInfos)
-        {
-            var log = "Done.";
-            if (errorInfos.Count != 0)
-            {
-                log = "These files are skipped because:\n";
-                log += string.Join(Environment.NewLine, errorInfos.Select(e => $"{ System.IO.Path.GetFileName(e.Name)}:{ e.Message}"));
-                MessageBox.Show(log);
-            }
-            return log;
-        }
 
         public void AppendProgress(int append, string vinfo)
         {
@@ -216,5 +185,16 @@ namespace JointPPT
             return errorInfos;
         }
 
+        private bool TestFileOccupation(string filename)
+        {
+            IntPtr vHandle = Lopen(filename, OF_READWRITE | OF_SHARE_DENY_NONE);
+            if (vHandle == HFILE_ERROR)
+            {
+                CloseHandle(vHandle);
+                return true;
+            }
+            CloseHandle(vHandle);
+            return false;
+        }
     }
 }
