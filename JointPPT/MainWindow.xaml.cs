@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
-
+using static JointPPT.NativeMethods;
 namespace JointPPT
 {
     /// <summary>
@@ -14,10 +14,7 @@ namespace JointPPT
     /// </summary>
     public partial class MainWindow : Window
     {
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr _lopen(string lpPathName, int iReadWrite);
-        [DllImport("kernel32.dll")]
-        public static extern bool CloseHandle(IntPtr hObject);
+
 
         public class ErrorInfo
         {
@@ -30,9 +27,7 @@ namespace JointPPT
             public string Message = "";
         }
 
-        public const int OF_READWRITE = 2;
-        public const int OF_SHARE_DENY_NONE = 0x40;
-        public readonly IntPtr HFILE_ERROR = new IntPtr(-1);
+
 
         public MainWindow()
         {
@@ -119,7 +114,7 @@ namespace JointPPT
                 {
                     files.Add(item.ToString());
                     //Check if file is occupied
-                    IntPtr vHandle = _lopen(item.ToString(), OF_READWRITE | OF_SHARE_DENY_NONE);
+                    IntPtr vHandle = Lopen(item.ToString(), OF_READWRITE | OF_SHARE_DENY_NONE);
                     if (vHandle == HFILE_ERROR)
                     {
                         MessageBox.Show("The file is occupied or unavailable:" + item.ToString());
