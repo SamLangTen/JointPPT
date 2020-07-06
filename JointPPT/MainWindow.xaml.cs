@@ -5,6 +5,7 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace JointPPT
 {
@@ -37,13 +38,6 @@ namespace JointPPT
         {
             InitializeComponent();
         }
-        /*
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            Thread.Sleep(5000);
-            Activate();
-        }
-        */
 
         private void FileListBox_DragEnter(object sender, DragEventArgs e)
         {
@@ -108,9 +102,9 @@ namespace JointPPT
             FileListBox.Items.Remove(FileListBox.SelectedItem);
         }
 
-        private void StartButton_Click(object sender, RoutedEventArgs e)
+        private async void StartButton_Click(object sender, RoutedEventArgs e)
         {
-            
+
             if (FileListBox.Items.IsEmpty)
             {
                 MessageBox.Show("Please drag PowerPoint files into the list box.");
@@ -121,7 +115,8 @@ namespace JointPPT
                                 , MessageBoxButton.OKCancel) == MessageBoxResult.OK)
             {
                 List<string> files = new List<string>();
-                foreach (var item in FileListBox.Items) {
+                foreach (var item in FileListBox.Items)
+                {
                     files.Add(item.ToString());
                     //Check if file is occupied
                     IntPtr vHandle = _lopen(item.ToString(), OF_READWRITE | OF_SHARE_DENY_NONE);
@@ -137,38 +132,37 @@ namespace JointPPT
                 //Multithread
                 bool isWideScreenChecked = (bool)IsWideScreen.IsChecked;
                 MainUI.IsEnabled = false;
-                new Thread(() =>
+                string log = "";
+                await Task.Run(() =>
                 {
                     var result = Join(files, isWideScreenChecked);
-                    CallBack(result);
-                }).Start();
+                    log = CallBack(result);
+                });
+
+                MainUI.IsEnabled = true;
+                Activate();
+                StatusLabel.Content = log;
             }
         }
 
         public delegate void UIEventHandler();
 
-        private void CallBack(List<ErrorInfo> errorInfos)
+        private string CallBack(List<ErrorInfo> errorInfos)
         {
             var log = "Done.";
             if (errorInfos.Count != 0)
             {
                 log = "These files are skipped because:\n";
-                foreach (var error in errorInfos)
-                {
-                    log += System.IO.Path.GetFileName(error.Name) + ":" + error.Message + "\n";
-                }
+                log += string.Join(Environment.NewLine, errorInfos.Select(e => $"{ System.IO.Path.GetFileName(e.Name)}:{ e.Message}"));
                 MessageBox.Show(log);
             }
-            Dispatcher.BeginInvoke(new UIEventHandler(() => {
-                MainUI.IsEnabled = true;
-                Activate();
-                StatusLabel.Content = log;
-            }));
+            return log;
         }
 
         public void AppendProgress(int append, string vinfo)
         {
-            Dispatcher.BeginInvoke(new UIEventHandler(() => {
+            Dispatcher.BeginInvoke(new UIEventHandler(() =>
+            {
                 if (vinfo != "")
                 {
                     StatusLabel.Content = vinfo;
@@ -227,41 +221,5 @@ namespace JointPPT
             return errorInfos;
         }
 
-        delegate void COMWrapper();
-
-        private void MakeRiskyCOMCall(COMWrapper doThis)
-        {
-            /*
-            try
-            {
-                MakeRiskyCOMCall(delegate () {  });
-            }
-            catch (COMException e)
-            {
-                errorInfos.Add(new ErrorInfo(FileName, e.Message));
-            }
-            */
-            bool sendAgain = true;
-            int count = 0;
-
-            while (sendAgain)
-            {
-                try
-                {
-                    doThis();
-                    sendAgain = false;
-                }
-                catch (COMException ex)
-                {
-                    System.Threading.Thread.Sleep(50);
-                    sendAgain = count > 100 ? false : true;
-                    if (!sendAgain)
-                    {
-                        throw;
-                    }
-                }
-                finally { count++; }
-            }
-        }
     }
 }
