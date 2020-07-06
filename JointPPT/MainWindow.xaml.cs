@@ -25,7 +25,7 @@ namespace JointPPT
             ViewModel = new MainWindowViewModel();
             DataContext = ViewModel;
             InitializeComponent();
-     
+
         }
 
         private void FileListBox_DragEnter(object sender, DragEventArgs e)
@@ -45,8 +45,8 @@ namespace JointPPT
                     if (fileName.EndsWith(".ppt", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase))
                     {
                         //Reject duplicated files
-                        if (FileListBox.Items.IndexOf(fileName) == -1)
-                            FileListBox.Items.Add(fileName);
+                        if (ViewModel.AddedFilenames.IndexOf(fileName) == -1)
+                            ViewModel.AddedFilenames.Add(fileName);
                     }
                 }
         }
@@ -103,9 +103,8 @@ namespace JointPPT
                                 , "Joint PPT"
                                 , MessageBoxButton.OKCancel) == MessageBoxResult.OK)
             {
-                List<string> files = new List<string>();
                 //Test if file is occupied
-                var occupiedFilename = ViewModel.AddedFilenames.FirstOrDefault(f => !TestFileOccupation(f));
+                var occupiedFilename = ViewModel.AddedFilenames.FirstOrDefault(f => TestFileOccupation(f));
                 if (occupiedFilename != null)
                 {
                     MessageBox.Show($"The file is occupied or unavailable:{occupiedFilename}");
@@ -114,7 +113,7 @@ namespace JointPPT
 
                 //Multithread
                 MainUI.IsEnabled = false;
-                await Task.Run(() => ViewModel.Logs = Join(files, ViewModel.UsedWideScreen));
+                await Task.Run(() => ViewModel.Logs = Join(ViewModel.AddedFilenames.ToList(), ViewModel.UsedWideScreen));
                 MainUI.IsEnabled = true;
                 Activate();
             }

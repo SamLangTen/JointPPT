@@ -10,6 +10,10 @@ namespace JointPPT
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
+        public MainWindowViewModel()
+        {
+            _AddedFilenames = new ObservableCollection<string>();
+        }
         public event PropertyChangedEventHandler PropertyChanged;
         private void Notify(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
